@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#0c0c10"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="ARIA"/>
+<link rel="manifest" href="manifest.json"/>
+<title>ARIA — Voice AI Agent v3</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0c0c10; --s1:#13131a; --s2:#1a1a24; --s3:#22222f;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.13);
+  --accent:#7c6dfa; --accent2:#fa6d8a; --teal:#2dd4aa; --amber:#f5a623;
+  --text:#e4e4f0; --muted:#5a5a7a; --muted2:#7a7a9a;
+  --mono:'JetBrains Mono',monospace; --sans:'Syne',sans-serif;
+  --r:10px; --nav:60px;
+}
+.light {
+  --bg:#f0f0f5; --s1:#ffffff; --s2:#f5f5fa; --s3:#eaeaf2;
+  --border:rgba(0,0,0,0.07); --border2:rgba(0,0,0,0.13);
+  --text:#1a1a2e; --muted:#9090aa; --muted2:#6060aa;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);transition:background .3s,color .3s;}
+
+/* ── App shell ── */
+.app{display:flex;flex-direction:column;height:100%;height:100dvh;}
+
+/* ── Topbar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  background:var(--s1);flex-shrink:0;gap:8px;
+}
+.topbar-left{display:flex;align-items:center;gap:10px;}
+.logo{font-family:var(--mono);font-size:16px;font-weight:700;color:var(--accent);}
+.mode-badge{
+  font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:20px;
+  background:rgba(124,109,250,0.12);color:var(--accent);border:1px solid rgba(124,109,250,0.25);
+}
+.topbar-right{display:flex;align-items:center;gap:6px;}
+.icon-btn{
+  background:var(--s2);border:1px solid var(--border);color:var(--muted2);
+  border-radius:8px;padding:7px 10px;font-size:14px;cursor:pointer;
+  transition:all .15s;display:flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:11px;
+}
+.icon-btn:hover{color:var(--text);border-color:var(--border2);}
+.icon-btn.active{color:var(--accent);border-color:var(--accent);background:rgba(124,109,250,0.08);}
+
+/* ── Content area ── */
+.content{flex:1;overflow:hidden;position:relative;}
+.panel{display:none;flex-direction:column;height:100%;overflow:hidden;}
+.panel.active{display:flex;}
+
+/* ── CHAT ── */
+.chat-msgs{flex:1;overflow-y:auto;padding:16px;scroll-behavior:smooth;}
+.chat-msgs::-webkit-scrollbar{width:3px;}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+.msg{margin-bottom:14px;animation:fadeUp .22s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.msg-label{font-family:var(--mono);font-size:9px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.role-badge{padding:1px 6px;border-radius:4px;font-size:9px;}
+.msg.user .role-badge{background:rgba(250,109,138,.15);color:var(--accent2);}
+.msg.ai .role-badge{background:rgba(45,212,170,.12);color:var(--teal);}
+.msg-bubble{
+  padding:10px 14px;border-radius:var(--r);font-size:14px;line-height:1.6;max-width:88%;
+  position:relative;
+}
+.msg.user .msg-bubble{background:rgba(124,109,250,.1);border:1px solid rgba(124,109,250,.2);margin-left:auto;}
+.msg.ai .msg-bubble{background:var(--s2);border:1px solid var(--border);}
+.msg.system .msg-bubble{background:transparent;color:var(--muted);font-family:var(--mono);font-size:11px;padding:3px 0;border:none;}
+
+/* Reactions */
+.reactions{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
+.reaction-btn{
+  background:var(--s3);border:1px solid var(--border);border-radius:20px;
+  padding:2px 8px;font-size:13px;cursor:pointer;transition:all .15s;
+}
+.reaction-btn:hover{border-color:var(--border2);transform:scale(1.1);}
+.reaction-btn.active{background:rgba(124,109,250,.15);border-color:var(--accent);}
+.add-reaction{
+  background:transparent;border:1px dashed var(--border2);border-radius:20px;
+  padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;
+  font-family:var(--mono);
+}
+.add-reaction:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Waveform canvas */
+.waveform-wrap{margin-bottom:6px;}
+canvas#waveCanvas{width:100%;height:48px;border-radius:8px;background:var(--s2);}
+
+/* ── Input area ── */
+.input-area{padding:10px 16px 12px;border-top:1px solid var(--border);background:var(--s1);flex-shrink:0;}
+.live-bar{
+  background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:7px 12px;margin-bottom:8px;font-family:var(--mono);font-size:11px;
+  color:var(--muted);min-height:32px;display:flex;align-items:center;gap:8px;transition:border-color .2s;
+}
+.live-bar.on{border-color:var(--accent2);color:var(--text);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);flex-shrink:0;animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.img-preview{display:none;align-items:center;gap:8px;margin-bottom:8px;}
+.img-preview img{max-height:60px;border-radius:6px;border:1px solid var(--border);}
+.rm-img{background:var(--s2);border:1px solid var(--border);color:var(--muted2);border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;font-family:var(--mono);}
+.type-row{display:flex;gap:8px;align-items:center;}
+.type-input{
+  flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;transition:border-color .2s;
+}
+.type-input:focus{border-color:var(--accent);}
+.type-input::placeholder{color:var(--muted);}
+.send-btn{
+  background:var(--accent);border:none;color:#fff;border-radius:8px;
+  padding:10px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:opacity .2s;
+}
+.send-btn:hover{opacity:.85;}
+.ctrl-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.ctrl-left{display:flex;align-items:center;gap:8px;}
+.mic-btn{
+  width:48px;height:48px;border-radius:50%;background:var(--s2);
+  border:1.5px solid var(--border);cursor:pointer;display:flex;align-items:center;
+  justify-content:center;font-size:20px;transition:all .2s;
+}
+.mic-btn:hover{border-color:var(--accent);}
+.mic-btn.on{border-color:var(--accent2);background:rgba(250,109,138,.1);animation:micPulse 1.5s infinite;}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(250,109,138,.4)}70%{box-shadow:0 0 0 12px rgba(250,109,138,0)}100%{box-shadow:0 0 0 0 rgba(250,109,138,0)}}
+.img-lbl{width:38px;height:38px;border-radius:8px;background:var(--s2);border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;transition:all .15s;}
+.img-lbl:hover{border-color:var(--amber);}
+#imgInput{display:none;}
+.viz{display:flex;align-items:center;gap:3px;}
+.vbar{width:3px;border-radius:2px;background:var(--accent);height:4px;opacity:.3;transition:height .1s;}
+.vbar.on{opacity:1;}
+.vbar:nth-child(1).on{animation:va .7s ease infinite;}
+.vbar:nth-child(2).on{animation:va .7s ease infinite .1s;}
+.vbar:nth-child(3).on{animation:va .7s ease infinite .2s;}
+.vbar:nth-child(4).on{animation:va .7s ease infinite .15s;}
+.vbar:nth-child(5).on{animation:va .7s ease infinite .05s;}
+@keyframes va{0%,100%{height:4px}50%{height:20px}}
+.status-chip{font-family:var(--mono);font-size:11px;display:flex;align-items:center;gap:5px;color:var(--muted);}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:all .3s;flex-shrink:0;}
+.sdot.ready{background:var(--teal);box-shadow:0 0 6px var(--teal);}
+.sdot.listening{background:var(--accent2);box-shadow:0 0 6px var(--accent2);animation:blink 1s infinite;}
+.sdot.thinking{background:var(--accent);box-shadow:0 0 6px var(--accent);animation:blink .6s infinite;}
+.sdot.speaking{background:var(--amber);box-shadow:0 0 6px var(--amber);animation:blink .8s infinite;}
+
+/* ── Sessions panel ── */
+.sessions-panel{flex:1;overflow-y:auto;padding:16px;}
+.sessions-panel h2{font-family:var(--mono);font-size:13px;color:var(--muted2);margin-bottom:14px;}
+.session-item{
+  background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.session-item:hover{border-color:var(--border2);}
+.session-item.active{border-color:var(--accent);}
+.session-title{font-size:13px;font-weight:600;}
+.session-meta{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+.session-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px;}
+.session-del:hover{color:var(--accent2);}
+.new-session-btn{
+  width:100%;background:rgba(124,109,250,.1);border:1px dashed rgba(124,109,250,.4);
+  border-radius:var(--r);padding:12px;color:var(--accent);font-family:var(--mono);
+  font-size:12px;cursor:pointer;transition:all .15s;
+}
+.new-session-btn:hover{background:rgba(124,109,250,.18);}
+
+/* ── Memory panel ── */
+.mem-panel{flex:1;overflow-y:auto;padding:16px;}
+.mem-panel h2{font-family:var(--mono);font-size:13px;color:var(--muted2);margin-bottom:14px;}
+.mem-item{
+  background:var(--s1);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;margin-bottom:8px;display:flex;align-items:start;gap:10px;
+}
+.mem-text{font-size:13px;line-height:1.5;flex:1;}
+.mem-time{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.mem-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;}
+.mem-del:hover{color:var(--accent2);}
+.mem-add{display:flex;gap:8px;margin-top:8px;}
+.mem-add input{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none;}
+.mem-add input:focus{border-color:var(--accent);}
+.mem-add-btn{background:var(--accent);border:none;color:#fff;border-radius:8px;padding:9px 14px;font-family:var(--mono);font-size:12px;cursor:pointer;}
+
+/* ── Stats panel ── */
+.stats-panel{flex:1;overflow-y:auto;padding:16px;}
+.stats-panel h2{font-family:var(--mono);font-size:13px;color:var(--muted2);margin-bottom:14px;}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+.stat-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center;}
+.stat-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);}
+.stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;}
+.cost-box{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px;}
+.cost-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:12px;}
+.cost-row:last-child{border:none;font-weight:700;color:var(--accent);}
+.cost-lbl{color:var(--muted2);}
+
+/* ── Settings panel ── */
+.cfg-panel{flex:1;overflow-y:auto;padding:16px;}
+.cfg-panel h2{font-family:var(--mono);font-size:13px;color:var(--muted2);margin-bottom:14px;}
+.cfg-group{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px;}
+.cfg-group h3{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;}
+.cfg-row{margin-bottom:12px;}
+.cfg-row:last-child{margin-bottom:0;}
+.cfg-lbl{font-family:var(--mono);font-size:11px;color:var(--muted2);margin-bottom:5px;display:block;}
+.cfg-input{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;transition:border-color .2s;}
+.cfg-input:focus{border-color:var(--accent);}
+.cfg-select{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:12px;outline:none;cursor:pointer;}
+.cfg-select option{background:var(--s2);}
+.range-row{display:flex;align-items:center;gap:10px;}
+.range-row input[type=range]{flex:1;accent-color:var(--accent);}
+.range-val{font-family:var(--mono);font-size:12px;color:var(--accent);min-width:32px;text-align:right;}
+.save-btn{background:var(--accent);border:none;color:#fff;border-radius:8px;padding:11px 20px;font-family:var(--mono);font-size:12px;cursor:pointer;width:100%;margin-top:4px;letter-spacing:.04em;}
+.save-btn:hover{opacity:.85;}
+
+/* ── Mode chips ── */
+.modes-wrap{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.mode-chip{padding:6px 12px;border-radius:20px;font-family:var(--mono);font-size:11px;cursor:pointer;border:1px solid var(--border);color:var(--muted2);background:var(--s2);transition:all .15s;user-select:none;}
+.mode-chip:hover{color:var(--text);}
+.mode-chip.active{background:rgba(124,109,250,.12);border-color:var(--accent);color:var(--accent);}
+
+/* ── Theme picker ── */
+.theme-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;}
+.theme-dot{
+  height:36px;border-radius:8px;cursor:pointer;border:2px solid transparent;
+  transition:border-color .15s;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-family:var(--mono);color:#fff;font-weight:700;
+}
+.theme-dot.active{border-color:var(--accent);}
+
+/* ── Bottom nav ── */
+.bottom-nav{
+  display:flex;align-items:center;justify-content:space-around;
+  background:var(--s1);border-top:1px solid var(--border);
+  padding:8px 0;padding-bottom:calc(8px + env(safe-area-inset-bottom));
+  flex-shrink:0;
+}
+.nav-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:6px 12px;border-radius:10px;cursor:pointer;transition:all .15s;
+  color:var(--muted2);font-family:var(--mono);font-size:9px;min-width:56px;
+  border:1px solid transparent;
+}
+.nav-item:hover{color:var(--text);}
+.nav-item.active{color:var(--accent);background:rgba(124,109,250,.08);border-color:rgba(124,109,250,.2);}
+.nav-icon{font-size:20px;}
+
+/* ── Reminders ── */
+.reminder-toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);
+  z-index:999;background:var(--s1);border:1px solid var(--accent);border-radius:10px;
+  padding:12px 20px;font-family:var(--mono);font-size:12px;color:var(--text);
+  opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;text-align:center;
+}
+.reminder-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:calc(var(--nav) + 16px);right:16px;z-index:998;
+  background:var(--s3);border:1px solid var(--border2);border-radius:8px;
+  padding:9px 16px;font-family:var(--mono);font-size:12px;color:var(--text);
+  transform:translateY(10px);opacity:0;transition:all .25s;pointer-events:none;
+  max-width:260px;
+}
+.toast.show{transform:none;opacity:1;}
+
+/* ── Wake indicator ── */
+.wake-ind{
+  position:fixed;top:70px;left:50%;transform:translateX(-50%);
+  background:rgba(45,212,170,.15);border:1px solid var(--teal);border-radius:20px;
+  padding:5px 14px;font-family:var(--mono);font-size:11px;color:var(--teal);
+  display:none;z-index:100;
+}
+.wake-ind.show{display:block;}
+
+/* ── Swipe hint ── */
+@media(max-width:600px){
+  .topbar .icon-btn span{display:none;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="logo">ARIA</div>
+      <div class="mode-badge" id="modeBadge">General</div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="toggleWake()" id="wakeBtn">👂 <span>Wake</span></button>
+      <button class="icon-btn" onclick="toggleTheme()" id="themeBtn">🌙</button>
+      <button class="icon-btn" onclick="downloadChat()">⬇</button>
+      <button class="icon-btn" onclick="stopAll()">⏹</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- CHAT panel -->
+    <div class="panel active" id="panel-chat">
+      <div class="waveform-wrap" style="padding:8px 16px 0;"><canvas id="waveCanvas"></canvas></div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="msg system"><div class="msg-bubble">// ARIA v3 ready. Settings mein keys dalo phir baat karo! 🎤</div></div>
+      </div>
+      <div class="input-area">
+        <div class="img-preview" id="imgPreview">
+          <img id="imgThumb" src="" alt=""/>
+          <button class="rm-img" onclick="removeImg()">✕</button>
+        </div>
+        <div class="live-bar" id="liveBar">
+          <span id="liveText" style="flex:1;">mic dabao ya type karo...</span>
+        </div>
+        <div class="type-row">
+          <input class="type-input" id="typeInput" placeholder="Type karo ya mic press karo..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendText();}"/>
+          <button class="send-btn" onclick="sendText()">↑</button>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-left">
+            <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎤</button>
+            <label class="img-lbl" for="imgInput">🖼</label>
+            <input type="file" id="imgInput" accept="image/*" onchange="handleImg(event)"/>
+            <div class="viz" id="viz">
+              <div class="vbar" id="v1"></div><div class="vbar" id="v2"></div>
+              <div class="vbar" id="v3"></div><div class="vbar" id="v4"></div>
+              <div class="vbar" id="v5"></div>
+            </div>
+          </div>
+          <div class="status-chip"><div class="sdot" id="sdot"></div><span id="stext">Settings configure karo</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SESSIONS panel -->
+    <div class="panel" id="panel-sessions">
+      <div class="sessions-panel">
+        <h2>// chat sessions</h2>
+        <button class="new-session-btn" onclick="newSession()">+ New Session</button>
+        <div style="margin-top:12px;" id="sessionList"></div>
+      </div>
+    </div>
+
+    <!-- MEMORY panel -->
+    <div class="panel" id="panel-memory">
+      <div class="mem-panel">
+        <h2>// persistent memory</h2>
+        <div id="memList"></div>
+        <div class="mem-add">
+          <input id="memInput" placeholder="Add memory... (e.g. 'Mera naam Rahul hai')" onkeydown="if(event.key==='Enter')addMem()"/>
+          <button class="mem-add-btn" onclick="addMem()">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATS panel -->
+    <div class="panel" id="panel-stats">
+      <div class="stats-panel">
+        <h2>// usage & cost</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-val" id="stMsgs">0</div><div class="stat-lbl">Messages</div></div>
+          <div class="stat-card"><div class="stat-val" id="stTok">0</div><div class="stat-lbl">Tokens</div></div>
+          <div class="stat-card"><div class="stat-val" id="stCost">$0.00</div><div class="stat-lbl">Cost</div></div>
+          <div class="stat-card"><div class="stat-val" id="stTTS">0</div><div class="stat-lbl">TTS chars</div></div>
+        </div>
+        <div class="cost-box">
+          <div class="cost-row"><span class="cost-lbl">GPT-4o input</span><span id="cIn">$0.0000</span></div>
+          <div class="cost-row"><span class="cost-lbl">GPT-4o output</span><span id="cOut">$0.0000</span></div>
+          <div class="cost-row"><span class="cost-lbl">TTS (tts-1)</span><span id="cTTS">$0.0000</span></div>
+          <div class="cost-row"><span class="cost-lbl">Total</span><span id="cTot">$0.0000</span></div>
+        </div>
+        <button class="icon-btn" style="margin-top:10px;width:100%;justify-content:center;" onclick="resetStats()">Reset Stats</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS panel -->
+    <div class="panel" id="panel-settings">
+      <div class="cfg-panel">
+        <h2>// settings</h2>
+
+        <div class="cfg-group">
+          <h3>API Keys</h3>
+          <div class="cfg-row"><label class="cfg-lbl">OpenAI Key</label><input class="cfg-input" type="password" id="cfgOAI" placeholder="sk-..."/></div>
+          <div class="cfg-row"><label class="cfg-lbl">Deepgram Key</label><input class="cfg-input" type="password" id="cfgDG" placeholder="deepgram key..."/></div>
+        </div>
+
+        <div class="cfg-group">
+          <h3>Agent Mode</h3>
+          <div class="modes-wrap">
+            <div class="mode-chip active" onclick="setMode('General','You are ARIA, a helpful friendly voice assistant. Keep responses concise — 2-3 sentences.',this)">General</div>
+            <div class="mode-chip" onclick="setMode('Doctor','You are a medical assistant. Give clear health info, always recommend consulting a real doctor.',this)">Doctor</div>
+            <div class="mode-chip" onclick="setMode('Teacher','You are a patient teacher. Explain simply with examples. Encourage curiosity.',this)">Teacher</div>
+            <div class="mode-chip" onclick="setMode('Friend','You are a fun casual friend. Be witty and relaxed. Keep it short and natural.',this)">Friend</div>
+            <div class="mode-chip" onclick="setMode('Coder','You are an expert coding assistant. Give concise accurate code answers.',this)">Coder</div>
+            <div class="mode-chip" onclick="setMode('Translator','You are a live translator. Translate what the user says between Hindi and English naturally.',this)">Translator</div>
+          </div>
+        </div>
+
+        <div class="cfg-group">
+          <h3>Voice & Speed</h3>
+          <div class="cfg-row">
+            <label class="cfg-lbl">TTS Voice</label>
+            <select class="cfg-select" id="cfgVoice">
+              <option value="nova">Nova — Female</option>
+              <option value="alloy">Alloy — Neutral</option>
+              <option value="echo">Echo — Male</option>
+              <option value="fable">Fable — Warm</option>
+              <option value="onyx">Onyx — Deep Male</option>
+              <option value="shimmer">Shimmer — Soft Female</option>
+            </select>
+          </div>
+          <div class="cfg-row">
+            <label class="cfg-lbl">Speed: <span id="spdVal">1.0</span>x</label>
+            <div class="range-row">
+              <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" id="cfgSpd" oninput="document.getElementById('spdVal').textContent=parseFloat(this.value).toFixed(1)"/>
+            </div>
+          </div>
+          <div class="cfg-row">
+            <label class="cfg-lbl">STT Language</label>
+            <select class="cfg-select" id="cfgLang">
+              <option value="hi">Hindi</option>
+              <option value="en">English</option>
+              <option value="multi">Auto detect</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="cfg-group">
+          <h3>Theme</h3>
+          <div class="theme-grid" id="themeGrid">
+            <div class="theme-dot active" style="background:#7c6dfa;" data-accent="#7c6dfa" onclick="setAccent('#7c6dfa',this)">◉</div>
+            <div class="theme-dot" style="background:#fa6d8a;" data-accent="#fa6d8a" onclick="setAccent('#fa6d8a',this)">◉</div>
+            <div class="theme-dot" style="background:#2dd4aa;" data-accent="#2dd4aa" onclick="setAccent('#2dd4aa',this)">◉</div>
+            <div class="theme-dot" style="background:#f5a623;" data-accent="#f5a623" onclick="setAccent('#f5a623',this)">◉</div>
+            <div class="theme-dot" style="background:#e85d04;" data-accent="#e85d04" onclick="setAccent('#e85d04',this)">◉</div>
+            <div class="theme-dot" style="background:#0ea5e9;" data-accent="#0ea5e9" onclick="setAccent('#0ea5e9',this)">◉</div>
+            <div class="theme-dot" style="background:#a855f7;" data-accent="#a855f7" onclick="setAccent('#a855f7',this)">◉</div>
+            <div class="theme-dot" style="background:#10b981;" data-accent="#10b981" onclick="setAccent('#10b981',this)">◉</div>
+          </div>
+        </div>
+
+        <div class="cfg-group">
+          <h3>Max Response Tokens: <span id="tokVal">200</span></h3>
+          <div class="range-row">
+            <input type="range" min="50" max="800" step="50" value="200" id="cfgTok" oninput="document.getElementById('tokVal').textContent=this.value"/>
+          </div>
+        </div>
+
+        <button class="save-btn" onclick="saveSettings()">Save & Activate ▶</button>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- Bottom nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchPanel('chat')" id="nav-chat"><div class="nav-icon">💬</div>Chat</div>
+    <div class="nav-item" onclick="switchPanel('sessions')" id="nav-sessions"><div class="nav-icon">🗂</div>Sessions</div>
+    <div class="nav-item" onclick="switchPanel('memory')" id="nav-memory"><div class="nav-icon">🧠</div>Memory</div>
+    <div class="nav-item" onclick="switchPanel('stats')" id="nav-stats"><div class="nav-icon">📊</div>Stats</div>
+    <div class="nav-item" onclick="switchPanel('settings')" id="nav-settings"><div class="nav-icon">⚙️</div>Settings</div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- Overlays -->
+<div class="wake-ind" id="wakeInd">👂 Listening for "Hey ARIA"...</div>
+<div class="reminder-toast" id="reminderToast"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let cfg = {};
+let sessions = JSON.parse(localStorage.getItem('aria_sessions') || '[]');
+let activeSessionId = null;
+let chatHistory = [];
+let memories = JSON.parse(localStorage.getItem('aria_memories') || '[]');
+let stats = JSON.parse(localStorage.getItem('aria_stats') || '{"msgs":0,"inTok":0,"outTok":0,"ttsChars":0}');
+let isListening = false;
+let currentAudio = null;
+let dgSocket = null;
+let mediaStream = null;
+let mediaRecorder = null;
+let silenceTimer = null;
+let finalTranscript = '';
+let pendingImg = null;
+let wakeActive = false;
+let wakeRecog = null;
+let isLight = false;
+let reminders = [];
+let audioCtx = null;
+let analyser = null;
+let waveAnimId = null;
+let swipeStartX = 0;
+const PANELS = ['chat','sessions','memory','stats','settings'];
+let currentPanel = 0;
+
+// ════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════
+if (!sessions.length) newSession(true);
+else { activeSessionId = sessions[sessions.length-1].id; loadSession(activeSessionId); }
+renderSessions();
+renderMems();
+updateStats();
+initWaveform();
+initSwipe();
+loadSavedCfg();
+
+// ════════════════════════════════════════════════════════
+//  PANEL SWITCHING
+// ════════════════════════════════════════════════════════
+function switchPanel(name) {
+  PANELS.forEach(p => {
+    document.getElementById('panel-'+p).classList.remove('active');
+    document.getElementById('nav-'+p).classList.remove('active');
+  });
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  currentPanel = PANELS.indexOf(name);
+  if (name === 'stats') updateStats();
+  if (name === 'sessions') renderSessions();
+  if (name === 'memory') renderMems();
+}
+
+// ════════════════════════════════════════════════════════
+//  SWIPE GESTURE
+// ════════════════════════════════════════════════════════
+function initSwipe() {
+  const content = document.querySelector('.content');
+  content.addEventListener('touchstart', e => { swipeStartX = e.touches[0].clientX; }, {passive:true});
+  content.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - swipeStartX;
+    if (Math.abs(dx) < 60) return;
+    if (dx < 0 && currentPanel < PANELS.length-1) switchPanel(PANELS[currentPanel+1]);
+    else if (dx > 0 && currentPanel > 0) switchPanel(PANELS[currentPanel-1]);
+  }, {passive:true});
+}
+
+// ════════════════════════════════════════════════════════
+//  THEME
+// ════════════════════════════════════════════════════════
+function toggleTheme() {
+  isLight = !isLight;
+  document.body.classList.toggle('light', isLight);
+  document.getElementById('themeBtn').textContent = isLight ? '🌑' : '🌙';
+  localStorage.setItem('aria_light', isLight ? '1' : '');
+}
+function setAccent(color, el) {
+  document.documentElement.style.setProperty('--accent', color);
+  document.querySelectorAll('.theme-dot').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  localStorage.setItem('aria_accent', color);
+}
+function loadSavedCfg() {
+  const acc = localStorage.getItem('aria_accent');
+  if (acc) { document.documentElement.style.setProperty('--accent', acc); document.querySelectorAll('.theme-dot').forEach(d => { if (d.dataset.accent===acc) d.classList.add('active'); else d.classList.remove('active'); }); }
+  if (localStorage.getItem('aria_light')) toggleTheme();
+  const v = localStorage.getItem('aria_voice'); if (v) document.getElementById('cfgVoice').value = v;
+  const s = localStorage.getItem('aria_speed'); if (s) { document.getElementById('cfgSpd').value = s; document.getElementById('spdVal').textContent = parseFloat(s).toFixed(1); }
+}
+
+// ════════════════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════════════════
+function toast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ════════════════════════════════════════════════════════
+//  HAPTIC
+// ════════════════════════════════════════════════════════
+function haptic(pattern=[10]) { try { navigator.vibrate && navigator.vibrate(pattern); } catch(e){} }
+
+// ════════════════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════════════════
+function saveSettings() {
+  cfg = {
+    oai: document.getElementById('cfgOAI').value.trim(),
+    dg: document.getElementById('cfgDG').value.trim(),
+    voice: document.getElementById('cfgVoice').value,
+    speed: parseFloat(document.getElementById('cfgSpd').value),
+    lang: document.getElementById('cfgLang').value,
+    system: currentSystem,
+    maxTok: parseInt(document.getElementById('cfgTok').value),
+  };
+  if (!cfg.oai || !cfg.dg) { toast('⚠️ OpenAI + Deepgram keys zaroori hain!'); return; }
+  localStorage.setItem('aria_voice', cfg.voice);
+  localStorage.setItem('aria_speed', cfg.speed);
+  setStatus('ready','Ready — bolo ya type karo');
+  addMsg('system','// Settings saved! Sab ready hai.');
+  switchPanel('chat');
+  toast('✅ Saved!');
+}
+
+// ════════════════════════════════════════════════════════
+//  AGENT MODES
+// ════════════════════════════════════════════════════════
+let currentSystem = 'You are ARIA, a helpful friendly voice assistant. Keep responses concise — 2-3 sentences.';
+function setMode(name, prompt, el) {
+  document.querySelectorAll('.mode-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentSystem = prompt;
+  if (cfg.oai) cfg.system = prompt;
+  document.getElementById('modeBadge').textContent = name;
+  chatHistory = [];
+  addMsg('system', `// Mode: ${name}. Chat cleared.`);
+  toast(`Mode: ${name}`);
+  haptic([5,5,5]);
+}
+
+// ════════════════════════════════════════════════════════
+//  STATUS
+// ════════════════════════════════════════════════════════
+function setStatus(state, text) {
+  document.getElementById('sdot').className = 'sdot ' + state;
+  document.getElementById('stext').textContent = text;
+}
+
+// ════════════════════════════════════════════════════════
+//  SESSIONS
+// ════════════════════════════════════════════════════════
+function newSession(silent) {
+  const id = Date.now().toString();
+  const s = { id, title: 'Session ' + (sessions.length+1), created: new Date().toLocaleDateString(), history: [] };
+  sessions.push(s);
+  activeSessionId = id;
+  chatHistory = [];
+  saveSessionsToStorage();
+  renderSessions();
+  document.getElementById('chatMsgs').innerHTML = '<div class="msg system"><div class="msg-bubble">// New session started. Baat karo!</div></div>';
+  if (!silent) { switchPanel('chat'); toast('New session started!'); }
+}
+function loadSession(id) {
+  const s = sessions.find(x => x.id === id);
+  if (!s) return;
+  activeSessionId = id;
+  chatHistory = s.history || [];
+  const area = document.getElementById('chatMsgs');
+  area.innerHTML = '<div class="msg system"><div class="msg-bubble">// Session loaded: ' + s.title + '</div></div>';
+  chatHistory.forEach(m => { if (m.role !== 'system') addMsg(m.role === 'user' ? 'user' : 'ai', typeof m.content === 'string' ? m.content : m.content[0]?.text || ''); });
+  switchPanel('chat');
+  toast('Session loaded!');
+}
+function deleteSession(id, e) {
+  e.stopPropagation();
+  sessions = sessions.filter(s => s.id !== id);
+  if (activeSessionId === id) { chatHistory = []; document.getElementById('chatMsgs').innerHTML = '<div class="msg system"><div class="msg-bubble">// Session deleted.</div></div>'; activeSessionId = null; }
+  saveSessionsToStorage();
+  renderSessions();
+}
+function saveSessionsToStorage() {
+  const s = sessions.find(x => x.id === activeSessionId);
+  if (s) s.history = chatHistory;
+  localStorage.setItem('aria_sessions', JSON.stringify(sessions.map(s => ({...s, history: s.history?.slice(-20)}))));
+}
+function renderSessions() {
+  const list = document.getElementById('sessionList');
+  if (!sessions.length) { list.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:20px;">No sessions yet</div>'; return; }
+  list.innerHTML = sessions.slice().reverse().map(s => `
+    <div class="session-item ${s.id === activeSessionId ? 'active' : ''}" onclick="loadSession('${s.id}')">
+      <div>
+        <div class="session-title">${s.title}</div>
+        <div class="session-meta">${s.created} · ${(s.history||[]).length} msgs</div>
+      </div>
+      <button class="session-del" onclick="deleteSession('${s.id}',event)">✕</button>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  CHAT UI
+// ════════════════════════════════════════════════════════
+const EMOJIS = ['👍','❤️','😂','🔥','😮','👏'];
+function addMsg(role, text, imgSrc) {
+  const area = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const label = role==='user' ? '<span class="role-badge">YOU</span>' : role==='ai' ? '<span class="role-badge">ARIA</span>' : '';
+  let html = `<div class="msg-label">${label}</div><div class="msg-bubble">`;
+  if (imgSrc) html += `<img src="${imgSrc}" style="max-width:160px;border-radius:8px;margin-bottom:6px;display:block;"/>`;
+  html += text + '</div>';
+  if (role === 'ai') {
+    html += `<div class="reactions" id="react-${Date.now()}">`;
+    EMOJIS.forEach(e => html += `<button class="reaction-btn" onclick="this.classList.toggle('active')" title="${e}">${e}</button>`);
+    html += '</div>';
+  }
+  div.innerHTML = html;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+function clearChat() {
+  document.getElementById('chatMsgs').innerHTML = '<div class="msg system"><div class="msg-bubble">// Chat cleared.</div></div>';
+  chatHistory = [];
+  saveSessionsToStorage();
+  toast('Cleared!');
+}
+function downloadChat() {
+  const msgs = document.querySelectorAll('#chatMsgs .msg:not(.system)');
+  let txt = 'ARIA Chat Export\n' + new Date().toLocaleString() + '\n\n';
+  msgs.forEach(m => {
+    const role = m.classList.contains('user') ? 'YOU' : 'ARIA';
+    const text = m.querySelector('.msg-bubble')?.textContent || '';
+    txt += `[${role}]: ${text.trim()}\n\n`;
+  });
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent(txt);
+  a.download = 'aria-' + Date.now() + '.txt';
+  a.click();
+  toast('💾 Downloaded!');
+}
+
+// ════════════════════════════════════════════════════════
+//  LIVE TRANSCRIPT
+// ════════════════════════════════════════════════════════
+function setLive(text, on) {
+  const lb = document.getElementById('liveBar');
+  if (on) {
+    lb.classList.add('on');
+    lb.innerHTML = `<div class="live-dot"></div><span style="flex:1;">${text||'...'}</span>`;
+  } else {
+    lb.classList.remove('on');
+    lb.innerHTML = `<span id="liveText" style="flex:1;">mic dabao ya type karo...</span>`;
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  WAVEFORM VISUALIZER
+// ════════════════════════════════════════════════════════
+function initWaveform() {
+  const canvas = document.getElementById('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  function drawIdle() {
+    canvas.width = canvas.offsetWidth * devicePixelRatio;
+    canvas.height = canvas.offsetHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c6dfa';
+    const mid = canvas.offsetHeight / (2 * devicePixelRatio);
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.2;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let x = 0; x < canvas.offsetWidth; x++) {
+      const y = mid + Math.sin(x * 0.05 + Date.now()*0.001) * 4;
+      x === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    waveAnimId = requestAnimationFrame(drawIdle);
+  }
+  drawIdle();
+}
+function startWaveAnalysis(stream) {
+  cancelAnimationFrame(waveAnimId);
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  const src = audioCtx.createMediaStreamSource(stream);
+  src.connect(analyser);
+  const canvas = document.getElementById('waveCanvas');
+  const ctx = canvas.getContext('2d');
+  const buf = new Uint8Array(analyser.frequencyBinCount);
+  function draw() {
+    canvas.width = canvas.offsetWidth * devicePixelRatio;
+    canvas.height = canvas.offsetHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+    analyser.getByteTimeDomainData(buf);
+    ctx.clearRect(0,0,canvas.offsetWidth,canvas.offsetHeight);
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c6dfa';
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.8;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    buf.forEach((v,i) => {
+      const x = (i/buf.length)*canvas.offsetWidth;
+      const y = (v/128)*canvas.offsetHeight/devicePixelRatio/2;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    waveAnimId = requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopWaveAnalysis() {
+  cancelAnimationFrame(waveAnimId);
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  initWaveform();
+}
+
+// ════════════════════════════════════════════════════════
+//  VIZ BARS
+// ════════════════════════════════════════════════════════
+function setViz(on) { for(let i=1;i<=5;i++) document.getElementById('v'+i).className='vbar'+(on?' on':''); }
+
+// ════════════════════════════════════════════════════════
+//  IMAGE
+// ════════════════════════════════════════════════════════
+function handleImg(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    pendingImg = ev.target.result;
+    document.getElementById('imgThumb').src = pendingImg;
+    const prev = document.getElementById('imgPreview');
+    prev.style.display = 'flex'; prev.style.alignItems = 'center';
+    toast('🖼 Image ready!');
+  };
+  reader.readAsDataURL(file);
+}
+function removeImg() {
+  pendingImg = null;
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('imgInput').value = '';
+}
+
+// ════════════════════════════════════════════════════════
+//  TYPE INPUT
+// ════════════════════════════════════════════════════════
+function sendText() {
+  const inp = document.getElementById('typeInput');
+  const text = inp.value.trim(); if (!text) return;
+  inp.value = '';
+  if (checkVoiceShortcut(text)) return;
+  if (checkReminder(text)) return;
+  processInput(text);
+}
+
+// ════════════════════════════════════════════════════════
+//  VOICE SHORTCUTS
+// ════════════════════════════════════════════════════════
+function checkVoiceShortcut(text) {
+  const t = text.toLowerCase();
+  if (t.includes('clear chat') || t.includes('chat clear') || t.includes('sab delete')) { clearChat(); toast('🗑 Chat cleared!'); return true; }
+  if (t.includes('new session') || t.includes('naya session')) { newSession(); return true; }
+  if (t.includes('stop') || t.includes('band karo')) { stopAll(); return true; }
+  if (t.includes('doctor mode')) { document.querySelectorAll('.mode-chip')[1].click(); return true; }
+  if (t.includes('teacher mode')) { document.querySelectorAll('.mode-chip')[2].click(); return true; }
+  if (t.includes('friend mode')) { document.querySelectorAll('.mode-chip')[3].click(); return true; }
+  if (t.includes('general mode')) { document.querySelectorAll('.mode-chip')[0].click(); return true; }
+  return false;
+}
+
+// ════════════════════════════════════════════════════════
+//  REMINDERS
+// ════════════════════════════════════════════════════════
+function checkReminder(text) {
+  const mins = text.match(/(\d+)\s*(minute|min|minut)/i);
+  const hours = text.match(/(\d+)\s*(hour|ghante|ghanta)/i);
+  const reminderKeywords = ['remind', 'yaad dilao', 'yaad karna', 'alarm', 'bata dena'];
+  const isReminder = reminderKeywords.some(k => text.toLowerCase().includes(k));
+  if (!isReminder) return false;
+  let ms = 0;
+  if (mins) ms = parseInt(mins[1]) * 60000;
+  if (hours) ms = parseInt(hours[1]) * 3600000;
+  if (!ms) { ms = 60000; }
+  const label = text;
+  toast(`⏰ Reminder set! ${mins ? mins[1]+' minutes' : hours ? hours[1]+' hours' : '1 minute'} mein.`);
+  addMsg('system', `// ⏰ Reminder set: "${label}"`);
+  setTimeout(() => {
+    haptic([100,50,100,50,100]);
+    showReminder('⏰ ' + label);
+    addMsg('system', '// 🔔 Reminder: ' + label);
+  }, ms);
+  return true;
+}
+function showReminder(msg) {
+  const el = document.getElementById('reminderToast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+// ════════════════════════════════════════════════════════
+//  MIC
+// ════════════════════════════════════════════════════════
+async function toggleMic() {
+  if (!cfg.oai) { toast('⚠️ Settings mein keys save karo!'); switchPanel('settings'); return; }
+  if (isListening) stopListening();
+  else await startListening();
+}
+async function startListening() {
+  try { mediaStream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+  catch { setStatus('error','Mic permission denied!'); return; }
+  isListening = true; finalTranscript = '';
+  document.getElementById('micBtn').classList.add('on');
+  setStatus('listening','Sun raha hoon...');
+  setViz(true); setLive('',true);
+  haptic([20]);
+  startWaveAnalysis(mediaStream);
+  const langParam = cfg.lang === 'multi' ? 'multi' : (cfg.lang || 'hi');
+  dgSocket = new WebSocket(
+    `wss://api.deepgram.com/v1/listen?model=nova-2&language=${langParam}&punctuate=true&interim_results=true&endpointing=600`,
+    ['token', cfg.dg]
+  );
+  dgSocket.onopen = () => {
+    mediaRecorder = new MediaRecorder(mediaStream, {mimeType:'audio/webm'});
+    mediaRecorder.ondataavailable = e => { if (dgSocket.readyState===WebSocket.OPEN && e.data.size>0) dgSocket.send(e.data); };
+    mediaRecorder.start(250);
+  };
+  dgSocket.onmessage = e => {
+    const data = JSON.parse(e.data);
+    const alt = data.channel?.alternatives?.[0];
+    if (!alt?.transcript) return;
+    if (data.is_final) {
+      finalTranscript += alt.transcript + ' ';
+      setLive(finalTranscript.trim(), true);
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        if (finalTranscript.trim()) { stopListening(); processInput(finalTranscript.trim()); }
+      }, 1400);
+    } else { setLive(finalTranscript + alt.transcript, true); }
+  };
+  dgSocket.onerror = () => setStatus('error','Deepgram error');
+}
+function stopListening() {
+  isListening = false; clearTimeout(silenceTimer);
+  document.getElementById('micBtn').classList.remove('on');
+  setViz(false); setLive('',false);
+  stopWaveAnalysis();
+  if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
+  if (dgSocket) { dgSocket.close(); dgSocket = null; }
+  if (mediaStream) { mediaStream.getTracks().forEach(t => t.stop()); mediaStream = null; }
+}
+
+// ════════════════════════════════════════════════════════
+//  PROCESS INPUT → GPT-4o → TTS
+// ════════════════════════════════════════════════════════
+async function processInput(text) {
+  if (checkVoiceShortcut(text)) return;
+  if (checkReminder(text)) return;
+  const imgSrc = pendingImg;
+  addMsg('user', text, imgSrc);
+  removeImg();
+  const memStr = memories.length ? '\n\nUser memories:\n' + memories.map(m=>'- '+m.text).join('\n') : '';
+  const sysFull = (cfg.system || currentSystem) + memStr;
+  const userContent = imgSrc ? [{type:'text',text},{type:'image_url',image_url:{url:imgSrc}}] : text;
+  chatHistory.push({role:'user', content:userContent});
+  setStatus('thinking','Soch raha hoon...');
+  let aiText = '';
+  try {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.oai},
+      body: JSON.stringify({
+        model:'gpt-4o',
+        messages:[{role:'system',content:sysFull},...chatHistory.slice(-12)],
+        max_tokens: cfg.maxTok || 200,
+        temperature: 0.8,
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    aiText = data.choices[0].message.content.trim();
+    stats.msgs++; stats.inTok += data.usage?.prompt_tokens||0; stats.outTok += data.usage?.completion_tokens||0;
+    localStorage.setItem('aria_stats', JSON.stringify(stats));
+  } catch(err) {
+    setStatus('error','OpenAI: '+err.message);
+    addMsg('system','// Error: '+err.message); return;
+  }
+  chatHistory.push({role:'assistant', content:aiText});
+  addMsg('ai', aiText);
+  saveSessionsToStorage();
+  setStatus('speaking','Bol raha hoon...');
+  try {
+    const res = await fetch('https://api.openai.com/v1/audio/speech', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.oai},
+      body: JSON.stringify({model:'tts-1', input:aiText, voice:cfg.voice||'nova', speed:cfg.speed||1.0, response_format:'mp3'})
+    });
+    if (!res.ok) throw new Error('TTS '+res.status);
+    stats.ttsChars += aiText.length;
+    localStorage.setItem('aria_stats', JSON.stringify(stats));
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentAudio = new Audio(url);
+    currentAudio.play();
+    setViz(true);
+    currentAudio.onended = () => { setStatus('ready','Ready — phir bolo!'); setViz(false); URL.revokeObjectURL(url); };
+  } catch(err) { setStatus('error','TTS: '+err.message); setViz(false); }
+}
+
+function stopAll() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  if (isListening) stopListening();
+  setStatus('ready','Ready');
+  setViz(false);
+}
+
+// ════════════════════════════════════════════════════════
+//  WAKE WORD
+// ════════════════════════════════════════════════════════
+function toggleWake() {
+  if (wakeActive) {
+    wakeActive = false;
+    if (wakeRecog) { wakeRecog.stop(); wakeRecog = null; }
+    document.getElementById('wakeInd').classList.remove('show');
+    document.getElementById('wakeBtn').classList.remove('active');
+    toast('Wake word off');
+  } else {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) { toast('⚠️ Chrome use karo wake word ke liye'); return; }
+    wakeActive = true;
+    document.getElementById('wakeBtn').classList.add('active');
+    document.getElementById('wakeInd').classList.add('show');
+    toast('"Hey ARIA" bolke activate karo!');
+    startWake();
+  }
+}
+function startWake() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  wakeRecog = new SR();
+  wakeRecog.continuous = true; wakeRecog.interimResults = true; wakeRecog.lang = 'hi-IN';
+  wakeRecog.onresult = e => {
+    const txt = Array.from(e.results).map(r=>r[0].transcript).join(' ').toLowerCase();
+    if ((txt.includes('hey aria') || txt.includes('हे एरिया')) && !isListening && cfg.oai) {
+      wakeRecog.stop();
+      haptic([30,20,30]);
+      toast('👂 Hey ARIA detected!');
+      setTimeout(() => { startListening(); if(wakeActive) setTimeout(startWake, 8000); }, 400);
+    }
+  };
+  wakeRecog.onend = () => { if(wakeActive && !isListening) startWake(); };
+  wakeRecog.start();
+}
+
+// ════════════════════════════════════════════════════════
+//  MEMORY
+// ════════════════════════════════════════════════════════
+function addMem() {
+  const inp = document.getElementById('memInput');
+  const text = inp.value.trim(); if (!text) return;
+  memories.push({text, time: new Date().toLocaleDateString()});
+  localStorage.setItem('aria_memories', JSON.stringify(memories));
+  inp.value = ''; renderMems(); toast('🧠 Memory saved!'); haptic([10]);
+}
+function deleteMem(i) {
+  memories.splice(i,1);
+  localStorage.setItem('aria_memories', JSON.stringify(memories));
+  renderMems();
+}
+function renderMems() {
+  const list = document.getElementById('memList');
+  if (!memories.length) { list.innerHTML = '<div style="font-family:var(--mono);font-size:12px;color:var(--muted);text-align:center;padding:24px;">Koi memory nahi. Add karo!</div>'; return; }
+  list.innerHTML = memories.map((m,i) => `
+    <div class="mem-item">
+      <div class="mem-text">${m.text}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <span class="mem-time">${m.time}</span>
+        <button class="mem-del" onclick="deleteMem(${i})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  STATS
+// ════════════════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('stMsgs').textContent = stats.msgs;
+  document.getElementById('stTok').textContent = stats.inTok + stats.outTok;
+  document.getElementById('stTTS').textContent = stats.ttsChars;
+  const inC = stats.inTok * 0.0000025, outC = stats.outTok * 0.00001, ttsC = stats.ttsChars * 0.000015;
+  const tot = inC + outC + ttsC;
+  document.getElementById('cIn').textContent = '$'+inC.toFixed(4);
+  document.getElementById('cOut').textContent = '$'+outC.toFixed(4);
+  document.getElementById('cTTS').textContent = '$'+ttsC.toFixed(4);
+  document.getElementById('cTot').textContent = '$'+tot.toFixed(4);
+  document.getElementById('stCost').textContent = '$'+tot.toFixed(4);
+}
+function resetStats() {
+  stats = {msgs:0,inTok:0,outTok:0,ttsChars:0};
+  localStorage.setItem('aria_stats', JSON.stringify(stats));
+  updateStats(); toast('Stats reset!');
+}
+</script>
+</body>
+</html>
